@@ -19,7 +19,7 @@ type UserClaim struct {
 	Name  string
 }
 
-func generateJWT(id uint, email string, name string) (string, error) {
+func generateToken(id uint, email string, name string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, UserClaim{
 		RegisteredClaims: jwt.RegisteredClaims{},
 		ID:               id,
@@ -93,7 +93,7 @@ func Signin(c *fiber.Ctx) error {
 		})
 	}
 
-	token, err := generateJWT(user.Id, user.Email, user.LastName)
+	token, err := generateToken(user.Id, user.Email, user.LastName)
 	if err != nil {
 		return err
 	}
@@ -119,7 +119,7 @@ func Signin(c *fiber.Ctx) error {
 }
 
 /***
-*** Get a user from a cookie
+*** Get a user from a cookie, the return the user data from the database
 ***/
 func User(c *fiber.Ctx) error {
 	cookie := c.Cookies("jwt")
@@ -135,9 +135,8 @@ func User(c *fiber.Ctx) error {
 		})
 	}
 
-	payload := token.Claims.(jwt.MapClaims)
 	var user models.User
-	database.DB.Where("id = ?", payload["id"]).First(&user)
+	database.DB.Where("id = ?", userClaim.ID).First(&user)
 
 	return c.JSON(user)
 }
