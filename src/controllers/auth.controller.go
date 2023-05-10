@@ -2,32 +2,31 @@ package controllers
 
 import (
 	"fmt"
+	"os"
 	"pollapalooza/src/database"
+	"pollapalooza/src/middlewares"
 	"pollapalooza/src/models"
+	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/gofiber/fiber/v2/middleware/session"
+	"github.com/golang-jwt/jwt/v4"
 )
 
-var key = []byte("SecretYouShouldHide")
+var key = []byte(os.Getenv("JWT_SECRET"))
 
-type UserClaim struct {
-	jwt.RegisteredClaims
-	ID    uint
-	Email string
-	Name  string
-}
+var store = session.New()
 
 func generateToken(id uint, email string, name string) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, UserClaim{
-		RegisteredClaims: jwt.RegisteredClaims{},
-		ID:               id,
-		Email:            email,
-		Name:             name,
-	})
 
-	signedString, err := token.SignedString([]byte(key))
+	payload := jwt.RegisteredClaims{
+		Subject:   strconv.Itoa(int(id)),
+		ExpiresAt: &jwt.NumericDate{time.Now().Add(time.Hour * 24)},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, payload)
+
+	signedString, err := token.SignedString(key)
 	if err != nil {
 		return "", fmt.Errorf("error creating signed string: %v", err)
 	}
@@ -38,7 +37,7 @@ func generateToken(id uint, email string, name string) (string, error) {
 *** Create a User account.
 ***/
 
-func Signup(c *fiber.Ctx) error {
+func SignUp(c *fiber.Ctx) error {
 	var data map[string]string
 
 	if err := c.BodyParser(&data); err != nil {
@@ -62,14 +61,14 @@ func Signup(c *fiber.Ctx) error {
 
 	database.DB.Create(&user)
 
-	return c.JSON(user)
+	return c.Status(fiber.StatusOK).JSON(user)
 }
 
 /***
 *** Authenticate a user with email and password.
 ***/
 
-func Signin(c *fiber.Ctx) error {
+func SignIn(c *fiber.Ctx) error {
 	var data map[string]string
 
 	if err := c.BodyParser(&data); err != nil {
@@ -112,31 +111,51 @@ func Signin(c *fiber.Ctx) error {
 	}
 	c.Cookie(&cookie)
 
-	return c.JSON(fiber.Map{
-		"message": "Success",
+	sess, err := store.Get(c)
+	if err != nil {
+		panic(err)
+	}
+	if err := sess.Save(); err != nil {
+		panic(err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": user,
 	})
 
+}
+
+/***
+*** Logout a user
+***/
+
+func SignOut(c *fiber.Ctx) error {
+	expired := time.Now().Add(-time.Hour * 24)
+	c.Cookie(&fiber.Cookie{
+		Name:    "token",
+		Value:   "",
+		Expires: expired,
+	})
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "success"})
 }
 
 /***
 *** Get a user from a cookie, the return the user data from the database
 ***/
 func User(c *fiber.Ctx) error {
-	cookie := c.Cookies("jwt")
-	var userClaim UserClaim
-	token, err := jwt.ParseWithClaims(cookie, &userClaim, func(token *jwt.Token) (interface{}, error) {
-		return []byte(key), nil
-	})
+	id, err := middlewares.GetUserId(c)
 
-	if err != nil || !token.Valid {
-		c.Status(fiber.StatusBadRequest)
+	if err != nil {
+		c.Status(fiber.StatusUnauthorized)
 		return c.JSON(fiber.Map{
-			"message": "Unauthenticated",
+			"message": "Invalid Credentials",
 		})
 	}
 
 	var user models.User
-	database.DB.Where("id = ?", userClaim.ID).First(&user)
 
-	return c.JSON(user)
+	database.DB.Where("id = ?", id).First(&user)
+
+	return c.Status(fiber.StatusOK).JSON(user)
 }
