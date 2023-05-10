@@ -10,7 +10,7 @@ import (
 )
 
 func Setup(app *fiber.App) {
-	app.Use(middlewares.Security)
+	// app.Use(middlewares.Security)
 
 	api := app.Group("api", logger.New())
 
@@ -20,6 +20,10 @@ func Setup(app *fiber.App) {
 	auth.Get("signout", controllers.SignOut)
 	auth.Get("me", controllers.Me)
 
+	user := api.Group("user")
+	userAuthenticated := user.Use(middlewares.IsAuthenticated)
+	userAuthenticated.Put("/", controllers.UpdateUser)
+	userAuthenticated.Put("/password", controllers.UpdateUserPassword)
 
 	// TODO: Middleware these suckas for user auth policy
 	poll := api.Group("poll")
