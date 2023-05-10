@@ -10,14 +10,14 @@ services:
     depends_on: 
       - database
   database: 
-    image: postgres:13
-    restart: always
+    image: postgres:alpine
     ports: 
-     - 2345:5432
+      - 2345:5432
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=pollapalooza
+    restart: always
     volumes:
       - db:/var/lib/postgresql/data 
 volumes:
