@@ -24,7 +24,7 @@ func Connect() {
 	}
 
 	fmt.Println("Connection Opened to Database")
-	DB.AutoMigrate(&models.Poll{}, &models.User{}, &models.Session{})
+	DB.AutoMigrate(&models.Poll{}, &models.User{})
 	fmt.Println("Database Migrated")
 
 }
