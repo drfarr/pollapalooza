@@ -18,7 +18,8 @@ func Setup(app *fiber.App) {
 	auth.Post("signup", controllers.SignUp)
 	auth.Post("signin", controllers.SignIn)
 	auth.Get("signout", controllers.SignOut)
-	auth.Get("user", controllers.User)
+	auth.Get("me", controllers.Me)
+
 
 	// TODO: Middleware these suckas for user auth policy
 	poll := api.Group("poll")

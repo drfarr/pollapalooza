@@ -119,9 +119,9 @@ func SignIn(c *fiber.Ctx) error {
 		panic(err)
 	}
 
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"message": user,
-	})
+	return c.Status(fiber.StatusOK).JSON(
+		user,
+	)
 
 }
 
@@ -143,7 +143,7 @@ func SignOut(c *fiber.Ctx) error {
 /***
 *** Get a user from a cookie, the return the user data from the database
 ***/
-func User(c *fiber.Ctx) error {
+func Me(c *fiber.Ctx) error {
 	id, err := middlewares.GetUserId(c)
 
 	if err != nil {
